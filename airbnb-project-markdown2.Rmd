@@ -1,0 +1,251 @@
+---
+title: "Airbnb Project"
+author: "Michelle Ortiz"
+date: "2/25/2021"
+output:
+  html_document:
+    df_print: paged
+  always_allow_html: true
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Airbnb Project
+
+## Exploratory Analysis
+
+First, we will load in the necessary libraries.
+
+```{r libraries, echo=TRUE, message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(ggmap)
+library(knitr)
+library(kableExtra)
+library(corrplot)
+library(scales)
+library(RColorBrewer)
+library(plotly)
+```
+
+Then, we will read in the csv file containing the data.
+
+```{r readcsv, echo=TRUE}
+airbnbdf = read.csv(file = 'data/ab-nyc-2019.csv')
+```
+
+Now that we have the data loaded in, we will remove the columns that are unnecessary.
+
+```{r cleaningup, echo=TRUE}
+airbnbdf = subset(airbnbdf, select = -c(name, id, last_review, host_name))
+```
+
+The data contains some NA values that will have to be dealt with. The only column containing NA values is the "reviews_per_month" column and it is because the "number_of_reviews" column has 0 as its value for the rows corresponding with the NA values for "reviews_per_month". In order to deal with it, the NA values will be replaced with 0's.
+
+```{r navalues, echo=TRUE}
+naCols <- airbnbdf[colSums(is.na(airbnbdf)) > 0]
+colnames(naCols)
+na_values= airbnbdf[rowSums(is.na(airbnbdf)) > 0,] 
+airbnbdf[is.na(airbnbdf)] <- 0
+```
+
+Check to see what the data looks like.
+
+```{r head, echo=TRUE}
+head(airbnbdf, 10)
+```
+
+\newpage
+
+## Summary Stats
+
+Summary stats of the dataset:
+
+```{r summary, echo=FALSE}
+summary_airbnb <- airbnbdf %>%
+  summarise(mean = round(mean(price), 2),
+            median = median(price),
+            min = min(price),
+            max = max(price),
+            stdev = round(sd(price), 2),
+            numReviews = sum(number_of_reviews),
+            count = n())
+summary_airbnb %>%
+   kbl(caption = "Summary of Stats", col.names = c("Average Price", "Median Price",
+                                "Minimum Price", "Maximum Price", "St Dev of Price",
+                                "Number of Reviews", "Total Number of Airbnbs")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "responsive"))
+```
+
+Summary stats of the dataset by borough:
+
+```{r byborough, echo=FALSE, message=FALSE}
+by_borough <- airbnbdf %>%
+  group_by(neighbourhood_group) %>%
+  summarise(mean = round(mean(price), 2),
+            median = median(price),
+            min = min(price),
+            max = max(price),
+            stdev = round(sd(price), 2),
+            numReviews = sum(number_of_reviews),
+            count = n())
+by_borough %>%
+  kbl(caption = "Summary of Stats by Borough", col.names = c("Borough","Average Price", "Median Price",
+                                "Minimum Price", "Maximum Price", "St Dev of Price",
+                                "Number of Reviews", "Total Number of Airbnbs")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "responsive"))
+```
+
+
+Scatterplot of the airbnbs in the state using the longitude and latitude provided for each location:
+
+```{r scatterplot, echo=FALSE, message=FALSE, warning = FALSE}
+register_google(key = "AIzaSyAynGDdhLJUNDElbJ7VzkMzqCig1gJe_Fk")
+newyork.map <- get_map(location = 'New York', zoom = 11, maptype = 'roadmap', color = 'bw', source = 'google')
+map1 <- ggmap(newyork.map) +
+          geom_point(aes(x = longitude, y = latitude, color = factor(neighbourhood_group)), data = airbnbdf, alpha = 0.2, size = 0.1) +
+          guides(color = guide_legend(override.aes = list(size = 4))) +
+          xlab("Longitude") +
+          ylab("Latitude") +
+          ggtitle("Airbnbs in Each Borough") +
+          scale_colour_discrete("Boroughs")
+map1
+```
+
+\newpage
+
+Since the scatterplot can be a bit crowded, a density map will be better: 
+
+```{r map2, echo=FALSE, message=FALSE, warning=FALSE}
+map2 <- ggmap(newyork.map) +
+          stat_density_2d(data = airbnbdf, aes(x=longitude, y=latitude, fill = stat(level)),
+                          geom = "polygon", alpha = 0.2, bins = 25) +
+          scale_fill_gradientn(colors = brewer.pal(7, "YlOrRd")) +
+          xlab("Longitude") +
+          ylab("Latitude") +
+          ggtitle("Airbnbs in NY")
+map2
+```
+
+Density map for each borough:
+
+```{r map3, echo=FALSE, message=FALSE, warning=FALSE}
+boroughs <- c("Bronx", "Brooklyn", "Manhattan", "Queens", "Staten Island")
+map3 <- ggmap(newyork.map) + 
+          stat_density_2d(data = airbnbdf %>%
+                            filter(neighbourhood_group %in% boroughs), 
+                          aes(x=longitude, y=latitude, fill = stat(level)), geom = "polygon", alpha = 0.2, bins = 25) +
+          scale_fill_gradientn(colors = brewer.pal(7, "YlOrRd")) +
+          facet_wrap(~ neighbourhood_group) +
+          xlab("Longitude") +
+          ylab("Latitude") +
+          ggtitle("Airbnbs in Each Borough")
+map3
+```
+
+## Insights
+
+Bargraph of number of airbnbs per borough:
+
+```{r insights1, echo=FALSE}
+b1 <- ggplot(by_borough, aes(x = neighbourhood_group, y = count, 
+                             text = paste("Borough: ", neighbourhood_group, "<br>Count: ", count))) +
+        geom_bar(stat = "identity", fill = "coral1") +
+        ylab("Number of Airbnbs") +
+        xlab("Borough") +
+        ggtitle("Number of Airbnbs Per Borough")
+b1 = ggplotly(b1, tooltip = "text")
+b1
+```
+
+Bargraph of the average price of an airbnb per borough:
+
+```{r insights2, echo=FALSE}
+b2 <- ggplot(by_borough, aes(x = neighbourhood_group, y = mean,
+                             text = paste("Borough: ", neighbourhood_group, "<br>Average Price: $", mean))) +
+        geom_bar(stat = "identity", fill = "blue") +
+        ylab("Average Price") +
+        xlab("Borough") +
+        ggtitle("Average Price of Airbnbs Per Borough")
+b2 = ggplotly(b2, tooltip = "text")
+b2
+```
+
+\newpage
+
+Bargraph of the count of each kind of airbnb per borough:
+
+```{r insights3, echo=FALSE}
+rooms <- airbnbdf %>%
+  count(neighbourhood_group, room_type)
+b3 <- ggplot(rooms, mapping = aes(x = neighbourhood_group, y = n, fill = room_type,
+                                  text = paste("Borough: ", neighbourhood_group, "<br>Room Type: ", 
+                                               room_type, "<br>Count: ", n))) + 
+  geom_col(position = "dodge") +
+  xlab("Borough") +
+  ylab("Count") +
+  ggtitle("Count of each kind of Airbnb for each Borough") +
+  labs(fill = "Room Type") +
+  theme(text = element_text(size = 10))
+b3 = ggplotly(b3, tooltip = "text")
+b3
+```
+
+Bargraph of type of room vs mean price:
+
+```{r insights4, echo=FALSE}
+by_room <- airbnbdf %>%
+  group_by(room_type) %>%
+  summarise(mean = mean(price), 
+            count = n())
+b4 <- ggplot(by_room, aes(x = room_type, y = mean,
+                          text = paste("Room Type: ", room_type, "<br>Average Price: $", round(mean, 2)))) +
+        geom_bar(stat ="identity", fill = "red") +
+        xlab("Room Type") +
+        ylab("Average Price") +
+        ggtitle("Average Price Per Room Type")
+b4 = ggplotly(b4, tooltip = "text")
+b4
+```
+
+\newpage
+
+Bargraph of the number of reviews per borough:
+
+```{r insights5, echo=FALSE}
+b5 <- ggplot(by_borough, aes(x = neighbourhood_group, y = numReviews,
+                             text = paste("Borough: ", neighbourhood_group, "<br>Number of Reviews: ", numReviews))) +
+        geom_bar(stat = "identity", fill = "purple") +
+        ylab("Number of Reviews") +
+        xlab("Borough") +
+        ggtitle("Number of Reviews Per Borough") +
+        scale_y_continuous(labels = comma)
+b5 = ggplotly(b5, tooltip = "text")
+b5
+```
+
+Scatterplot of the number of reviews vs price of airbnb. According to this scatterplot, there does not seem to be any correlation between the number of reviews an airbnb has and its price.
+
+```{r insights6, echo=FALSE}
+s1 <- ggplot(airbnbdf, aes(x = number_of_reviews, y = price)) +
+        geom_point(alpha = 0.25, colour = "royalblue") +
+        ggtitle("Number of Reviews VS Price") +
+        xlab("Number of Reviews") +
+        ylab("Price")
+s1
+```
+
+\newpage
+
+Correlation Matrix. According to the correlation matrix, none of the variables are correlated. 
+
+```{r insights7, echo=FALSE}
+airbnbdf_num <- select_if(airbnbdf, is.numeric)
+airbnb_cor = cor(airbnbdf_num)
+corplot <- corrplot(airbnb_cor, method = "color", type = "lower", tl.cex = .9)
+```

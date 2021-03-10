@@ -105,7 +105,8 @@ by_borough %>%
 Scatterplot of the airbnbs in the state using the longitude and latitude provided for each location:
 
 ```{r scatterplot, echo=FALSE, message=FALSE, warning = FALSE}
-register_google(key = "AIzaSyAynGDdhLJUNDElbJ7VzkMzqCig1gJe_Fk")
+keyFile <- file('google-key.txt') #file containing google key
+register_google(key = readLines(keyFile))
 newyork.map <- get_map(location = 'New York', zoom = 11, maptype = 'roadmap', color = 'bw', source = 'google')
 map1 <- ggmap(newyork.map) +
           geom_point(aes(x = longitude, y = latitude, color = factor(neighbourhood_group)), data = airbnbdf, alpha = 0.2, size = 0.1) +

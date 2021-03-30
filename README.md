@@ -8,5 +8,5 @@ The goals / steps of this project are the following:
 	* Provide some insights on the relationship between variables.
 	* Check for correlation between any two variables using a correlation plot.
 
-The output should be an HTML markdown document.
+The output should be an [HTML markdown document](https://michelle-ortiz.github.io/airbnb-project/airbnb-project-markdown2.html).
 Here is the [link](https://www.kaggle.com/dgomonov/new-york-city-airbnb-open-data) to the Airbnb dataset on Kaggle. 
